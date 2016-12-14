@@ -3,6 +3,9 @@
 // Function that will read the radio data, limit servos and trigger a failsafe
 // ----------------------------------------------------------------------------
 
+char readChannel;
+char readData[30];
+
 static void default_dead_zones()
 {
     g.rc_1.set_default_dead_zone(30);
@@ -38,8 +41,7 @@ static void init_rc_in()
 
     // set default dead zones
     default_dead_zones();
-
-    // initialise throttle_zero flag
+ // initialise throttle_zero flag
     ap.throttle_zero = true;
 }
 
@@ -79,7 +81,9 @@ static void init_rc_out()
         }
     }else{
         // did we abort the calibration?
-        if(g.esc_calibrate == 1)
+       
+		
+		if(g.esc_calibrate == 1)
             g.esc_calibrate.set_and_save(0);
     }
 
@@ -98,24 +102,107 @@ void output_min()
     motors.output_min();
 }
 
+
+int16_t UpdateControlData() {
+	
+	char c_temp[10];
+	int16_t ch_data[8];
+
+	char temp;
+	
+	char command[10]; //定义command命令，
+	char *pointer_command=command;
+	
+	char* data_temp=c_temp;
+	int16_t i = 0;
+
+	//接收串口发送的数据
+	while (hal.uartB->available()) {
+
+		temp = (char)hal.uartB->read();
+}
+	*data_temp = 0;   //指针指向零
+	i = 0;
+
+	cliSerial->printf_P(PSTR("Channel number :   %c\n"), readChannel); \
+	cliSerial->printf_P(PSTR("Data number :   %s\n"), c_temp); \
+	int16_t readResult = atoi(c_temp);
+   
+	return readResult;
+    }
+
+
+
 static void read_radio()
 {
     static uint32_t last_update_ms = 0;
     uint32_t tnow_ms = millis();
+	int16_t data_pwm;
 
-    if (hal.rcin->new_input()) {
+	//data_pwm=readBluetooth();
+
+	switch (readChannel)
+	{
+	
+	case '1':    //通道1：roll
+		g.rc_1.set_pwm(data_pwm);
+		break;
+	case '2'://通道2：pitch
+		g.rc_2.set_pwm(data_pwm);
+		break;
+	case '3'://通道3，throttle
+		cliSerial->printf_P(PSTR("Thtottle number\n")); \
+		set_throttle_and_failsafe(data_pwm);
+		cliSerial->printf_P(PSTR("Thtottle number----- %d\n"),data_pwm); \
+		set_throttle_zero_flag(g.rc_3.control_in);
+
+		break;
+	case '4'://通道4，yaw
+		
+		cliSerial->printf_P(PSTR("RC4 number\n")); \
+		g.rc_4.set_pwm(data_pwm);
+		cliSerial->printf_P(PSTR("RC4 number----- %d\n"), data_pwm); \
+	
+		break;
+	case '5':
+		g.rc_5.set_pwm(data_pwm);
+		
+		break;
+	case '6':
+		g.rc_6.set_pwm(data_pwm);
+		
+		break;
+	case '7':
+		g.rc_7.set_pwm(data_pwm);
+		
+		break;
+	case '8':
+		g.rc_8.set_pwm(data_pwm);
+		break;
+	default:
+		break;
+	}
+	readChannel = '0';
+	
+if (hal.rcin->new_input()) {
         last_update_ms = tnow_ms;
         ap.new_radio_frame = true;
         uint16_t periods[8];
         hal.rcin->read(periods,8);
-        g.rc_1.set_pwm(periods[rcmap.roll()-1]);
+        
+		cliSerial->printf_P(PSTR("youmen : %d    %d    %d    %d     %d    %d     %d      %d     %d\n"),
+			periods[rcmap.roll() - 1],
+			periods[rcmap.pitch() - 1],
+			periods[rcmap.throttle() - 1],
+			periods[rcmap.yaw() - 1], periods[4], periods[5], periods[6], periods[7],
+			g.rc_3.control_in);
+
+		g.rc_1.set_pwm(periods[rcmap.roll()-1]);
         g.rc_2.set_pwm(periods[rcmap.pitch()-1]);
-
         set_throttle_and_failsafe(periods[rcmap.throttle()-1]);
-        set_throttle_zero_flag(g.rc_3.control_in);
-
+		set_throttle_zero_flag(g.rc_3.control_in);
         g.rc_4.set_pwm(periods[rcmap.yaw()-1]);
-        g.rc_5.set_pwm(periods[4]);
+		g.rc_5.set_pwm(periods[4]);
         g.rc_6.set_pwm(periods[5]);
         g.rc_7.set_pwm(periods[6]);
         g.rc_8.set_pwm(periods[7]);
@@ -137,23 +224,28 @@ static void read_radio()
     }else{
         uint32_t elapsed = tnow_ms - last_update_ms;
         // turn on throttle failsafe if no update from the RC Radio for 500ms or 2000ms if we are using RC_OVERRIDE
-        if (((!failsafe.rc_override_active && (elapsed >= FS_RADIO_TIMEOUT_MS)) || (failsafe.rc_override_active && (elapsed >= FS_RADIO_RC_OVERRIDE_TIMEOUT_MS))) &&
-            (g.failsafe_throttle && motors.armed() && !failsafe.radio)) {
-            Log_Write_Error(ERROR_SUBSYSTEM_RADIO, ERROR_CODE_RADIO_LATE_FRAME);
-            set_failsafe_radio(true);
-        }
+		if (((!failsafe.rc_override_active && (elapsed >= FS_RADIO_TIMEOUT_MS)) || (failsafe.rc_override_active && (elapsed >= FS_RADIO_RC_OVERRIDE_TIMEOUT_MS))) &&
+			(g.failsafe_throttle && motors.armed() && !failsafe.radio)) {
+			Log_Write_Error(ERROR_SUBSYSTEM_RADIO, ERROR_CODE_RADIO_LATE_FRAME);
+			set_failsafe_radio(true);
+		}
     }
 }
 
 #define FS_COUNTER 3        // radio failsafe kicks in after 3 consecutive throttle values below failsafe_throttle_value
 static void set_throttle_and_failsafe(uint16_t throttle_pwm)
 {
-    // if failsafe not enabled pass through throttle and exit
+    
+	
+	
+	// if failsafe not enabled pass through throttle and exit
     if(g.failsafe_throttle == FS_THR_DISABLED) {
-        g.rc_3.set_pwm(throttle_pwm);
+		
+		
+		g.rc_3.set_pwm(throttle_pwm);
         return;
     }
-
+	//cliSerial->printf_P(PSTR("g.failsafe_throttle\n"));
     //check for low throttle value
     if (throttle_pwm < (uint16_t)g.failsafe_throttle_value) {
 

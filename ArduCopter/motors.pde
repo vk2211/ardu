@@ -158,6 +158,7 @@ static bool init_arm_motors()
     if(did_ground_start == false) {
         startup_ground(true);
         // final check that gyros calibrated successfully
+		
         if (((g.arming_check == ARMING_CHECK_ALL) || (g.arming_check & ARMING_CHECK_INS)) && !ins.gyro_calibrated_ok_all()) {
             gcs_send_text_P(SEVERITY_HIGH,PSTR("Arm: Gyro cal failed"));
             AP_Notify::flags.armed = false;
@@ -256,24 +257,26 @@ static void pre_arm_checks(bool display_failure)
     }
 
     // check Baro
-    if ((g.arming_check == ARMING_CHECK_ALL) || (g.arming_check & ARMING_CHECK_BARO)) {
-        // barometer health check
-        if(!barometer.healthy()) {
-            if (display_failure) {
-                gcs_send_text_P(SEVERITY_HIGH,PSTR("PreArm: Baro not healthy"));
-            }
-            return;
-        }
-        // check Baro & inav alt are within 1m
-        if(fabs(inertial_nav.get_altitude() - baro_alt) > PREARM_MAX_ALT_DISPARITY_CM) {
-            if (display_failure) {
-                gcs_send_text_P(SEVERITY_HIGH,PSTR("PreArm: Alt disparity"));
-            }
-            return;
-        }
-    }
+	//delete by lcl
+    //if ((g.arming_check == arming_check_all) || (g.arming_check & arming_check_baro)) {
+    //    // barometer health check
+    //    if(!barometer.healthy()) {
+    //        if (display_failure) {
+    //           gcs_send_text_p(severity_high,pstr("prearm: baro not healthy"));
+    //        }
+    //        return;
+    //    }
+    //    // check Baro & inav alt are within 1m
+    //    if(fabs(inertial_nav.get_altitude() - baro_alt) > PREARM_MAX_ALT_DISPARITY_CM) {
+    //        if (display_failure) {
+    //            gcs_send_text_P(SEVERITY_HIGH,PSTR("PreArm: Alt disparity"));
+    //        }
+    //        return;
+    //    }
+    //}
 
     // check Compass
+//	delete by lcl
     if ((g.arming_check == ARMING_CHECK_ALL) || (g.arming_check & ARMING_CHECK_COMPASS)) {
         // check the primary compass is healthy
         if(!compass.healthy(0)) {
@@ -332,6 +335,7 @@ static void pre_arm_checks(bool display_failure)
     }
 
     // check GPS
+   // delete by lcl
     if (!pre_arm_gps_checks(display_failure)) {
         return;
     }
@@ -345,6 +349,7 @@ static void pre_arm_checks(bool display_failure)
     }
 
     // check INS
+	//delete by lcl
     if ((g.arming_check == ARMING_CHECK_ALL) || (g.arming_check & ARMING_CHECK_INS)) {
         // check accelerometers have been calibrated
         if(!ins.calibrated()) {
@@ -411,10 +416,11 @@ static void pre_arm_checks(bool display_failure)
             }
         }
 #endif
-    }
+ }
 #if CONFIG_HAL_BOARD != HAL_BOARD_VRBRAIN
 #ifndef CONFIG_ARCH_BOARD_PX4FMU_V1
     // check board voltage
+//delete by lcl
     if ((g.arming_check == ARMING_CHECK_ALL) || (g.arming_check & ARMING_CHECK_VOLTAGE)) {
         if(hal.analogin->board_voltage() < BOARD_VOLTAGE_MIN || hal.analogin->board_voltage() > BOARD_VOLTAGE_MAX) {
             if (display_failure) {
@@ -427,6 +433,7 @@ static void pre_arm_checks(bool display_failure)
 #endif
 
     // check various parameter values
+
     if ((g.arming_check == ARMING_CHECK_ALL) || (g.arming_check & ARMING_CHECK_PARAMETERS)) {
 
         // ensure ch7 and ch8 have different functions

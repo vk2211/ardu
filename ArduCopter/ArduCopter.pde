@@ -208,6 +208,7 @@ static uint8_t command_ack_counter;
 
 // has a log download started?
 static bool in_log_download;
+static uint16_t check_number = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 // prototypes
@@ -385,7 +386,7 @@ static union {
 ////////////////////////////////////////////////////////////////////////////////
 // This is the state of the flight control system
 // There are multiple states defined such as STABILIZE, ACRO,
-static int8_t control_mode = STABILIZE;
+static int8_t control_mode = ALT_HOLD;
 // Used to maintain the state of the previous control switch position
 // This is set to -1 when we need to re-read the switch
 static uint8_t oldSwitchPosition;
@@ -756,6 +757,8 @@ static void pre_arm_checks(bool display_failure);
 
 // setup the var_info table
 AP_Param param_loader(var_info);
+  
+char data_Buffer[50];
 
 #if MAIN_LOOP_RATE == 400
 /*
@@ -843,40 +846,40 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
   1000 = 0.1hz
  */
 static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
-    { rc_loop,               1,     100 },
-    { throttle_loop,         2,     450 },
-    { update_GPS,            2,     900 },
-    { update_batt_compass,  10,     720 },
-    { read_aux_switches,    10,      50 },
-    { arm_motors_check,     10,      10 },
-    { auto_trim,            10,     140 },
-    { update_altitude,      10,    1000 },
-    { run_nav_updates,       4,     800 },
-    { update_thr_cruise,     1,      50 },
-    { three_hz_loop,        33,      90 },
-    { compass_accumulate,    2,     420 },
-    { barometer_accumulate,  2,     250 },
+      { rc_loop,               1,     100 },
+     // { throttle_loop,         2,     450 },
+      //{ update_GPS,            2,     900 },
+      { update_batt_compass,  10,     720 },
+      { read_aux_switches,    10,      50 },
+      { arm_motors_check,     10,      10 },
+      { auto_trim,            10,     140 },
+      { update_altitude,      10,    1000 },
+      { run_nav_updates,       4,     800 },
+      { update_thr_cruise,     1,      50 },
+      { three_hz_loop,        33,      90 },
+      { compass_accumulate,    2,     420 },
+      { barometer_accumulate,  2,     250 },
 #if FRAME_CONFIG == HELI_FRAME
-    { check_dynamic_flight,  2,     100 },
+   { check_dynamic_flight,  2,     100 },
 #endif
-    { update_notify,         2,     100 },
-    { one_hz_loop,         100,     420 },
-    { ekf_dcm_check,        10,      20 },
-    { crash_check,          10,      20 },
-    { gcs_check_input,	     2,     550 },
-    { gcs_send_heartbeat,  100,     150 },
-    { gcs_send_deferred,     2,     720 },
-    { gcs_data_stream_send,  2,     950 },
-    { update_mount,          2,     450 },
-    { ten_hz_logging_loop,  10,     300 },
-    { fifty_hz_logging_loop, 2,     220 },
-    { perf_update,        1000,     200 },
-    { read_receiver_rssi,   10,      50 },
+      { update_notify,         2,     100 },
+      { one_hz_loop,         100,     420 },
+      { ekf_dcm_check,        10,      20 },
+      { crash_check,          10,      20 },
+      { gcs_check_input,	     2,     550 },
+      { gcs_send_heartbeat,  100,     150 },
+      { gcs_send_deferred,     2,     720 },
+      { gcs_data_stream_send,  2,     950 },
+      //{ update_mount,          2,     450 },
+      { ten_hz_logging_loop,  10,     300 },
+      { fifty_hz_logging_loop, 2,     220 },
+      { perf_update,        1000,     200 },
+      { read_receiver_rssi,   10,      50 },
 #if FRSKY_TELEM_ENABLED == ENABLED
-    { telemetry_send,       20,     100 },	
+   { telemetry_send,       20,     100 },	
 #endif
 #ifdef USERHOOK_FASTLOOP
-    { userhook_FastLoop,     1,    100  },
+   { userhook_FastLoop,     1,    100  },
 #endif
 #ifdef USERHOOK_50HZLOOP
     { userhook_50Hz,         2,    100  },
@@ -891,6 +894,9 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
     { userhook_SuperSlowLoop,100,   100 },
 #endif
 };
+
+
+
 #endif
 
 
@@ -946,7 +952,11 @@ void loop()
 {
     // wait for an INS sample
     ins.wait_for_sample();
-    uint32_t timer = micros();
+	
+	
+	
+    
+	uint32_t timer = micros();
 
     // check loop time
     perf_info_check_loop_time(timer - fast_loopTimer);
@@ -972,6 +982,9 @@ void loop()
     // call until scheduler.tick() is called again
     uint32_t time_available = (timer + MAIN_LOOP_MICROS) - micros();
     scheduler.run(time_available);
+
+	//if (cliSerial != NULL) cliSerial->println_P(PSTR("##############loop after")); \
+
 }
 
 
@@ -982,13 +995,14 @@ static void fast_loop()
     // IMU DCM Algorithm
     // --------------------
     read_AHRS();
+	
 
     // run low level rate controllers that only require IMU data
     attitude_control.rate_controller_run();
     
-#if FRAME_CONFIG == HELI_FRAME
-    update_heli_control_dynamics();
-#endif //HELI_FRAME
+//#if FRAME_CONFIG == HELI_FRAME
+//    update_heli_control_dynamics();
+//#endif //HELI_FRAME
 
     // write out the servo PWM values
     // ------------------------------
@@ -1003,13 +1017,35 @@ static void fast_loop()
 
     // optical flow
     // --------------------
-#if OPTFLOW == ENABLED
-    if(g.optflow_enabled) {
-        update_optical_flow();
-    }
-#endif  // OPTFLOW == ENABLED
+//#if OPTFLOW == ENABLED
+//    if(g.optflow_enabled) {
+//        update_optical_flow();
+//    }
+//#endif  // OPTFLOW == ENABLED
 
+	check_number++;
+	if (check_number>=100) {
+
+		check_number = 10;
+	}
+	
+	//char *temp=data_Buffer;
+	//
+	////接收串口发送的数据
+ //   while (hal.uartB->available()) {
+
+	//*temp++ = (char)hal.uartB->read();
+	//  	
+	//}
+	//*temp = 0;
+	//
+
+	//cliSerial->printf_P(PSTR("%s\n"),data_Buffer); \
+		
+	
 }
+
+
 
 // rc_loops - reads user input from transmitter/receiver
 // called at 100hz
@@ -1017,6 +1053,7 @@ static void rc_loop()
 {
     // Read radio and 3-position switch on radio
     // -----------------------------------------
+	//读取遥控器的输入
     read_radio();
     read_control_switch();
 }
@@ -1034,33 +1071,34 @@ static void throttle_loop()
     // check auto_armed status
     update_auto_armed();
 
-#if FRAME_CONFIG == HELI_FRAME
-    // update rotor speed
-    heli_update_rotor_speed_targets();
-
-    // update trad heli swash plate movement
-    heli_update_landing_swash();
-#endif
+//#if FRAME_CONFIG == HELI_FRAME
+//    // update rotor speed
+//    heli_update_rotor_speed_targets();
+//
+//    // update trad heli swash plate movement
+//    heli_update_landing_swash();
+//#endif
 }
 
 // update_mount - update camera mount position
+
 // should be run at 50hz
-static void update_mount()
-{
-#if MOUNT == ENABLED
-    // update camera mount's position
-    camera_mount.update_mount_position();
-#endif
-
-#if MOUNT2 == ENABLED
-    // update camera mount's position
-    camera_mount2.update_mount_position();
-#endif
-
-#if CAMERA == ENABLED
-    camera.trigger_pic_cleanup();
-#endif
-}
+//static void update_mount()
+//{
+//#if MOUNT == ENABLED
+//  //  update camera mount's position
+//    camera_mount.update_mount_position();
+//#endif
+//
+//#if MOUNT2 == ENABLED
+//   update camera mount's position
+//   camera_mount2.update_mount_position();
+//#endif
+//
+//#if CAMERA == ENABLED
+//    camera.trigger_pic_cleanup();
+//#endif
+//}
 
 // update_batt_compass - read battery and compass
 // should be called at 10hz
@@ -1178,13 +1216,13 @@ static void one_hz_loop()
     // update assigned functions and enable auxiliar servos
     RC_Channel_aux::enable_aux_servos();
 
-#if MOUNT == ENABLED
-    camera_mount.update_mount_type();
-#endif
-
-#if MOUNT2 == ENABLED
-    camera_mount2.update_mount_type();
-#endif
+//#if MOUNT == ENABLED
+//    camera_mount.update_mount_type();
+//#endif
+//
+//#if MOUNT2 == ENABLED
+//    camera_mount2.update_mount_type();
+//#endif
 
     check_usb_mux();
 
@@ -1225,93 +1263,93 @@ static void update_optical_flow(void)
 #endif  // OPTFLOW == ENABLED
 
 // called at 50hz
-static void update_GPS(void)
-{
-    static uint32_t last_gps_reading[GPS_MAX_INSTANCES];   // time of last gps message
-    static uint8_t ground_start_count = 10;     // counter used to grab at least 10 reads before commiting the Home location
-    bool report_gps_glitch;
-    bool gps_updated = false;
-
-    gps.update();
-
-    // logging and glitch protection run after every gps message
-    for (uint8_t i=0; i<gps.num_sensors(); i++) {
-        if (gps.last_message_time_ms(i) != last_gps_reading[i]) {
-            last_gps_reading[i] = gps.last_message_time_ms(i);
-
-            // log GPS message
-            if (should_log(MASK_LOG_GPS)) {
-                DataFlash.Log_Write_GPS(gps, i, current_loc.alt);
-            }
-
-            gps_updated = true;
-        }
-    }
-
-    if (gps_updated) {
-        // run glitch protection and update AP_Notify if home has been initialised
-        if (ap.home_is_set) {
-            gps_glitch.check_position();
-            report_gps_glitch = (gps_glitch.glitching() && !ap.usb_connected && hal.util->safety_switch_state() != AP_HAL::Util::SAFETY_DISARMED);
-            if (AP_Notify::flags.gps_glitching != report_gps_glitch) {
-                if (gps_glitch.glitching()) {
-                    Log_Write_Error(ERROR_SUBSYSTEM_GPS, ERROR_CODE_GPS_GLITCH);
-                }else{
-                    Log_Write_Error(ERROR_SUBSYSTEM_GPS, ERROR_CODE_ERROR_RESOLVED);
-                }
-                AP_Notify::flags.gps_glitching = report_gps_glitch;
-            }
-        }
-
-        // checks to initialise home and take location based pictures
-        if (gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
-
-            // check if we can initialise home yet
-            if (!ap.home_is_set) {
-                // if we have a 3d lock and valid location
-                if(gps.status() >= AP_GPS::GPS_OK_FIX_3D && gps.location().lat != 0) {
-                    if (ground_start_count > 0 ) {
-                        ground_start_count--;
-                    } else {
-                        // after 10 successful reads store home location
-                        // ap.home_is_set will be true so this will only happen once
-                        ground_start_count = 0;
-                        init_home();
-
-                        // set system clock for log timestamps
-                        hal.util->set_system_clock(gps.time_epoch_usec());
-                        
-                        if (g.compass_enabled) {
-                            // Set compass declination automatically
-                            compass.set_initial_location(gps.location().lat, gps.location().lng);
-                        }
-                    }
-                } else {
-                    // start again if we lose 3d lock
-                    ground_start_count = 10;
-                }
-            }
-
-            //If we are not currently armed, and we're ready to 
-            //enter RTK mode, then capture current state as home,
-            //and enter RTK fixes!
-            if (!motors.armed() && gps.can_calculate_base_pos()) {
-
-                gps.calculate_base_pos();
-
-            }
-
-#if CAMERA == ENABLED
-            if (camera.update_location(current_loc) == true) {
-                do_take_picture();
-            }
-#endif
-        }
-    }
-
-    // check for loss of gps
-    failsafe_gps_check();
-}
+//static void update_GPS(void)
+//{
+//    static uint32_t last_gps_reading[GPS_MAX_INSTANCES];   // time of last gps message
+//    static uint8_t ground_start_count = 10;     // counter used to grab at least 10 reads before commiting the Home location
+//    bool report_gps_glitch;
+//    bool gps_updated = false;
+//
+//    gps.update();
+//
+//    // logging and glitch protection run after every gps message
+//    for (uint8_t i=0; i<gps.num_sensors(); i++) {
+//        if (gps.last_message_time_ms(i) != last_gps_reading[i]) {
+//            last_gps_reading[i] = gps.last_message_time_ms(i);
+//
+//            // log GPS message
+//            if (should_log(MASK_LOG_GPS)) {
+//                DataFlash.Log_Write_GPS(gps, i, current_loc.alt);
+//            }
+//
+//            gps_updated = true;
+//        }
+//    }
+//
+//    if (gps_updated) {
+//        // run glitch protection and update AP_Notify if home has been initialised
+//        if (ap.home_is_set) {
+//            gps_glitch.check_position();
+//            report_gps_glitch = (gps_glitch.glitching() && !ap.usb_connected && hal.util->safety_switch_state() != AP_HAL::Util::SAFETY_DISARMED);
+//            if (AP_Notify::flags.gps_glitching != report_gps_glitch) {
+//                if (gps_glitch.glitching()) {
+//                    Log_Write_Error(ERROR_SUBSYSTEM_GPS, ERROR_CODE_GPS_GLITCH);
+//                }else{
+//                    Log_Write_Error(ERROR_SUBSYSTEM_GPS, ERROR_CODE_ERROR_RESOLVED);
+//                }
+//                AP_Notify::flags.gps_glitching = report_gps_glitch;
+//            }
+//        }
+//
+//        // checks to initialise home and take location based pictures
+//        if (gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
+//
+//            // check if we can initialise home yet
+//            if (!ap.home_is_set) {
+//                // if we have a 3d lock and valid location
+//                if(gps.status() >= AP_GPS::GPS_OK_FIX_3D && gps.location().lat != 0) {
+//                    if (ground_start_count > 0 ) {
+//                        ground_start_count--;
+//                    } else {
+//                        // after 10 successful reads store home location
+//                        // ap.home_is_set will be true so this will only happen once
+//                        ground_start_count = 0;
+//                        init_home();
+//
+//                        // set system clock for log timestamps
+//                        hal.util->set_system_clock(gps.time_epoch_usec());
+//                        
+//                        if (g.compass_enabled) {
+//                            // Set compass declination automatically
+//                            compass.set_initial_location(gps.location().lat, gps.location().lng);
+//                        }
+//                    }
+//                } else {
+//                    // start again if we lose 3d lock
+//                    ground_start_count = 10;
+//                }
+//            }
+//
+//            //If we are not currently armed, and we're ready to 
+//            //enter RTK mode, then capture current state as home,
+//            //and enter RTK fixes!
+//            if (!motors.armed() && gps.can_calculate_base_pos()) {
+//
+//                gps.calculate_base_pos();
+//
+//            }
+//
+//#/*if CAMERA == ENABLED
+//            if (camera.update_location(current_loc) == true) {
+//                do_take_picture();
+//            }
+//#endif*/
+//        }
+//    }
+//
+//    // check for loss of gps
+//    failsafe_gps_check();
+//}
 
 static void
 init_simple_bearing()
@@ -1320,6 +1358,7 @@ init_simple_bearing()
     simple_cos_yaw = ahrs.cos_yaw();
     simple_sin_yaw = ahrs.sin_yaw();
 
+	
     // initialise super simple heading (i.e. heading towards home) to be 180 deg from simple mode heading
     super_simple_last_bearing = wrap_360_cd(ahrs.yaw_sensor+18000);
     super_simple_cos_yaw = simple_cos_yaw;
@@ -1335,10 +1374,14 @@ init_simple_bearing()
 void update_simple_mode(void)
 {
     float rollx, pitchx;
-
+	
+	
     // exit immediately if no new radio frame or not in simple mode
+	////delete by lcl
     if (ap.simple_mode == 0 || !ap.new_radio_frame) {
-        return;
+		cliSerial->println_P(PSTR("############## update flight simple"));
+		
+		return;
     }
 
     // mark radio frame as consumed
@@ -1346,13 +1389,16 @@ void update_simple_mode(void)
 
     if (ap.simple_mode == 1) {
         // rotate roll, pitch input by -initial simple heading (i.e. north facing)
-        rollx = g.rc_1.control_in*simple_cos_yaw - g.rc_2.control_in*simple_sin_yaw;
+	    rollx = g.rc_1.control_in*simple_cos_yaw - g.rc_2.control_in*simple_sin_yaw;
         pitchx = g.rc_1.control_in*simple_sin_yaw + g.rc_2.control_in*simple_cos_yaw;
-    }else{
+		
+	
+	}else{
         // rotate roll, pitch input by -super simple heading (reverse of heading to home)
-        rollx = g.rc_1.control_in*super_simple_cos_yaw - g.rc_2.control_in*super_simple_sin_yaw;
+		rollx = g.rc_1.control_in*super_simple_cos_yaw - g.rc_2.control_in*super_simple_sin_yaw;
         pitchx = g.rc_1.control_in*super_simple_sin_yaw + g.rc_2.control_in*super_simple_cos_yaw;
-    }
+		
+	}
 
     // rotate roll, pitch input from north facing to vehicle's perspective
     g.rc_1.control_in = rollx*ahrs.cos_yaw() + pitchx*ahrs.sin_yaw();

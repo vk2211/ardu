@@ -21,47 +21,47 @@ static bool set_mode(uint8_t mode)
     }
 
     switch(mode) {
-        case ACRO:
+       /* case ACRO:
             #if FRAME_CONFIG == HELI_FRAME
                 success = heli_acro_init(ignore_checks);
             #else
                 success = acro_init(ignore_checks);
             #endif
-            break;
+            break;*/
 
         case STABILIZE:
-            #if FRAME_CONFIG == HELI_FRAME
-                success = heli_stabilize_init(ignore_checks);
-            #else
+           // #if FRAME_CONFIG == HELI_FRAME
+           //     success = heli_stabilize_init(ignore_checks);
+          //  #else
                 success = stabilize_init(ignore_checks);
-            #endif
+           // #endif
             break;
 
         case ALT_HOLD:
             success = althold_init(ignore_checks);
             break;
 
-        case AUTO:
+       /* case AUTO:
             success = auto_init(ignore_checks);
-            break;
+            break;*/
 
-        case CIRCLE:
+       /* case CIRCLE:
             success = circle_init(ignore_checks);
-            break;
+            break;*/
 
         case LOITER:
             success = loiter_init(ignore_checks);
             break;
 
-        case GUIDED:
+      /*  case GUIDED:
             success = guided_init(ignore_checks);
             break;
-
+*/
         case LAND:
             success = land_init(ignore_checks);
             break;
 
-        case RTL:
+       /* case RTL:
             success = rtl_init(ignore_checks);
             break;
 
@@ -93,7 +93,7 @@ static bool set_mode(uint8_t mode)
         case POSHOLD:
             success = poshold_init(ignore_checks);
             break;
-#endif
+#endif*/
 
         default:
             success = false;
@@ -127,15 +127,15 @@ static bool set_mode(uint8_t mode)
 static void update_flight_mode()
 {
     switch (control_mode) {
-        case ACRO:
-            #if FRAME_CONFIG == HELI_FRAME
-                heli_acro_run();
-            #else
-                acro_run();
-            #endif
-            break;
+       ///* case ACRO:
+       //     #if FRAME_CONFIG == HELI_FRAME
+       //         heli_acro_run();
+       //     #else
+       //         acro_run();
+       //     #endif
+       //     break;*/
 
-        case STABILIZE:
+        case STABILIZE:    //自稳模式,默认状态下选择四轴飞行器模式
             #if FRAME_CONFIG == HELI_FRAME
                 heli_stabilize_run();
             #else
@@ -143,27 +143,27 @@ static void update_flight_mode()
             #endif
             break;
 
-        case ALT_HOLD:
+        case ALT_HOLD:  //定高模式
             althold_run();
             break;
 
-        case AUTO:
+      /*  case AUTO:
             auto_run();
-            break;
+            break;*/
 
-        case CIRCLE:
+       /* case CIRCLE:
             circle_run();
-            break;
+            break;*/
 
-        case LOITER:
-            loiter_run();
-            break;
+      case LOITER:  //悬停模式
+           loiter_run();
+           break;
 
-        case GUIDED:
+      /*  case GUIDED:
             guided_run();
-            break;
+            break;*/
 
-        case LAND:
+        case LAND:  //降落模式
             land_run();
             break;
 
@@ -171,35 +171,39 @@ static void update_flight_mode()
             rtl_run();
             break;
 
-#if OPTFLOW == ENABLED
-        case OF_LOITER:
-            ofloiter_run();
-            break;
-#endif
+//#if OPTFLOW == ENABLED
+//        case OF_LOITER:
+//            ofloiter_run();
+//            break;
+//#endif
 
-        case DRIFT:
+      /*  case DRIFT:
             drift_run();
-            break;
+            break;*/
 
-        case SPORT:
+        /*case SPORT:
             sport_run();
             break;
-
-        case FLIP:
+*/
+       /* case FLIP:
             flip_run();
-            break;
+            break;*/
 
-#if AUTOTUNE_ENABLED == ENABLED
-        case AUTOTUNE:
-            autotune_run();
-            break;
-#endif
+//#if AUTOTUNE_ENABLED == ENABLED
+//        case AUTOTUNE:
+//            autotune_run();
+//            break;
+//#endif
 
-#if POSHOLD_ENABLED == ENABLED
-        case POSHOLD:
-            poshold_run();
-            break;
-#endif
+//#if POSHOLD_ENABLED == ENABLED
+//        case POSHOLD:
+//            poshold_run();
+//            break;
+//#endif
+
+		default:
+			
+			break;
     }
 }
 
